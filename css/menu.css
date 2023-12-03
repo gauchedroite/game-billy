@@ -1,7 +1,32 @@
 
+@font-face {
+    font-family: 'BiscuitsDelight';
+    src: url(../fonts/Biscuits\ Delight.otf);
+}
+@font-face {
+    font-family: 'ChocolateButtons';
+    src: url(../fonts/Chocolate\ Buttons.otf);
+}
+@font-face {
+    font-family: 'ComingSoon';
+    src: url(../fonts/ComingSoon.ttf);
+}
+@font-face {
+    font-family: 'GamesStudio';
+    src: url(../fonts/Games\ Studios.otf);
+}
+@font-face {
+    font-family: 'Schoolbell';
+    src: url(../fonts/Schoolbell.ttf);
+}
+@font-face {
+    font-family: 'KidsDream';
+    src: url(../fonts/KidsDreamDemoRegular.ttf);
+}
+
 #gmenu {
 
-    font-family: -apple-system, SF UI Text, Helvetica Neue, Helvetica, Arial, sans-serif;
+    font-family: Schoolbell;
     padding: 0;
     margin: 0;
     line-height: 1.4;
@@ -17,10 +42,33 @@
     }
     
     #game_menu {
-        position: absolute;
+        .menu-panel {
+            position: absolute;
+            left: 5%;
+            top: 10%;
+            font-size: 50px;
 
-        .menu-panel a {
-            color: whitesmoke;
+            & ul {
+                list-style: none;
+            }
+
+            & li {
+                padding: 16px;
+                margin: 32px;
+            }
+
+            & a {
+                display: block;
+                text-align: center;
+                padding: 8px 64px;
+                background-color: color-mix(in srgb, darkseagreen, transparent 25%);
+                color: royalblue;
+                text-decoration: none;
+
+                box-shadow: 20px 38px 34px -26px rgba(0, 0, 0, 0.75);
+                border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+                border: dashed 7px honeydew;
+            }
         }
     }
 }

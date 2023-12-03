@@ -11,7 +11,7 @@
             margin: 0;
             height: 100%;
         }
-        canvas {
+        .solid {
             position: absolute;
             width: 100vw;
             height: 100vh;
@@ -20,7 +20,6 @@
             display: block;
         }
         img#menu_img {
-            position: absolute;
             bottom: 0;
             right: 0;
             width: 50%; 
@@ -30,9 +29,9 @@
     </style>
 </head>
 <body>
-    <canvas id="menu_canvas"></canvas>
-    <img id="menu_img" src="assets/menu-billy.png" alt="">
-    <!--<div id="menu_button" style="position: absolute; right: 0;">
+    <canvas id="menu_canvas" class="solid"></canvas>
+    <img id="menu_img" class="solid" src="assets/menu-billy.png" alt="">
+    <!--<div id="menu_button" style="right: 0;" class="solid">
         <button onclick="snipped()">SNIP!</button>
     </div>-->
 
@@ -43,62 +42,159 @@
         }
     </script>
     <script id="fragment_shader" type="x-shader/x-fragment">
-        precision mediump float;
+        precision highp float;
+
         uniform float time;
+        uniform vec2 mouse;
         uniform vec2 resolution;
-
-        mat2 m = mat2( 0.90,  0.110, -0.70,  1.00 );
-
-        float hash( float n ) {
-            return fract(sin(n)*758.5453);
+        
+        // hash without sine: https://www.shadertoy.com/view/4djSRW
+        vec3 hash32(vec2 p) {
+            vec3 p3 = fract(vec3(p.xyx) * vec3(443.8975, 397.2973, 491.1871));
+            p3 += dot(p3, p3.yxz+19.19);
+            return fract(vec3((p3.x+p3.y)*p3.z, (p3.x+p3.z)*p3.y, (p3.y+p3.z)*p3.x));
         }
-
-        float noise( in vec3 x ) {
-            vec3 p = floor(x);
-            vec3 f = fract(x); 
-            float n = p.x + p.y*57.0 + p.z*800.0;
-            float res = mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x), mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
-                    mix(mix( hash(n+800.0), hash(n+801.0),f.x), mix( hash(n+857.0), hash(n+858.0),f.x),f.y),f.z);
-            return res;
-        }
-
-        float fbm( vec3 p ) {
-            float f = 0.0;
-            f += 0.50000*noise( p ); p = p*2.02;
-            f -= 0.25000*noise( p ); p = p*2.03;
-            f += 0.12500*noise( p ); p = p*2.01;
-            f += 0.06250*noise( p ); p = p*2.04;
-            f -= 0.03125*noise( p );
-            return f/0.984375;
-        }
-
-        float cloud(vec3 p) {
-            p -= fbm(vec3(p.x,p.y,0.0)*0.5)*2.25;
+        
+        // Some complex functions are from: https://raw.githubusercontent.com/julesb/glsl-util/master/complexvisual.glsl
+        #define E 2.7182818284590452353602874713527
+        #ifndef sinh
+            #define sinh(a) (pow(E, a)-pow(E, -a)) / 2.
+        #endif
+        #ifndef cosh
+            #define cosh(a) (pow(E, a)+pow(E, -a)) / 2.
+        #endif
+        
+        // for the hill shapes
+        float Fractal(vec2 p, vec2 off, float l, float L) {
+            // 'unroll' p horizontally (complex exp)
+            p = vec2(exp(-p.y)*cos(p.x), exp(-p.y)*sin(p.x));// + vec2(.1*sin(.2*iTime), .1*cos(.2*iTime));
             
-            float a = 0.0;
-            a -= fbm(p*3.0)*2.2-1.1;
-            return a * a;
+            // a bit of complex sine for variation
+            p *= .831;
+            p = .05 + vec2(sin(p.x)*cosh(p.y), cos(p.x)*sinh(p.y));
+            
+            // iterate
+            for (int i = 0; i < 5; i++) {
+                // standard Julia
+                p = vec2(p.x*p.x-p.y*p.y, 2.*p.x*p.y) - off;
+                
+                // pinned inversion
+                p = p / dot(p, p) + vec2(-.000085, 0.);
+                p = p / dot(p, p);
+            }
+        
+            return length(p) + p.x / 1.05; // + p.y * .25;
         }
-
-        vec3 f2(vec3 c) {
-            c += hash(gl_FragCoord.x+gl_FragCoord.y*9.9)*0.01;
-            c *= 0.7-length(gl_FragCoord.xy / resolution.xy -0.5)*0.7;
-            float w = length(c);
-            c = mix(c*vec3(1.0,1.0,1.6), vec3(w,w,w)*vec3(1.4,1.2,1.0), w*1.1-0.2);
-            return c;
-        }
-
+        
         void main( void ) {
-            vec2 position = (gl_FragCoord.xy / resolution.xy);
-            position.y += 0.2;
-
-            vec2 coord= vec2((position.x-0.5)/position.y,1.0/(position.y+0.2));
-            coord += time * 0.015;
-
-            float q = cloud(vec3(coord*1.0,0.222));
-
-            vec3 col = vec3(0.2,0.7,0.8) + vec3(q*vec3(0.2,0.4,0.1));
-            gl_FragColor = vec4( f2(col), 1.0 );
+            vec2 res = resolution.xy;
+            vec2 p = (gl_FragCoord.xy-res/2.) / res.y;
+            float t = .05 * time;
+            
+            // shift everything down a tad
+            p.y += .1;
+            
+            // original p
+            vec2 op = p;
+            
+            // shift camera
+            vec2 offs = vec2(.33 * t, .3+.2*sin(.178*t)) + (mouse.xy-.5); // panning
+            
+            // sun pos
+            vec2 spos = vec2(.67, 0.)-p;
+            
+            // background
+            vec3 bg =
+                mix(
+                    // sun
+                    vec3(1.7, 1.3, 1.),
+                    // fog & sky
+                    mix(
+                        vec3(1.),
+                        vec3(.3, .5, 1.),
+                        clamp(p.y+.4, 0., 1.)
+                    ),
+                    // sun shape and position
+                    .3 + .5 * length(p-spos)
+                );
+            
+            // initial color
+            vec3 col = bg;
+            
+            // number of layers
+            const float L = 9.;
+            
+            // hill layers
+            for (float l = 1.; l < L; l++) {
+                // original p
+                p = op;
+                
+                // scale layer
+                p /= pow(2., l) / 10. / L;
+            
+                // scrolling and panning
+                p += offs;
+                
+                // move horizontally at each layer
+                p.x += 1.7 * l;
+                
+                // hill shape
+                float fr = clamp(-2.+.005*Fractal(p, vec2(1., fract(-l*.25)), l, L), 0., 1.);
+            
+                // mix col with bg & previous layers
+                col =
+                    mix(
+                        col,
+                        // mix bg with hill color
+                        mix(
+                            bg,
+                            // mix in ground fog 
+                            mix(
+                                bg, // fog color
+                                vec3(.1, .5, .1) - .4 * fr + .1, // hill color
+                                clamp((p.y+4.)/4., 0., 1.)
+                            ),
+                            (l-.5)/L
+                            //1.-exp(-(l-.5)/L)
+                        ),
+                        min(1., fr/.1)
+                    );
+                    
+                // general movement of motes
+                p += t * vec2(.5, .15);
+                
+                // scrolling and panning / 2.0 (makes them appear to exist between hill layers when mousing)
+                p += .5 * offs;
+                
+                // hash for motes
+                vec3 rnd = hash32(floor(p));
+                
+                // set mote size
+                rnd.z = mix(.02, .25, rnd.z);
+                
+                // set mote position within its cell
+                rnd.xy =
+                    .5 + (.5-rnd.z) * vec2(
+                        cos(.9*t+7.*rnd.x),
+                        sin(.7*t+5.*rnd.y)
+                    );
+                
+                // mix col with motes
+                col =
+                    mix(
+                        col,
+                        mix(
+                            bg,
+                            // mote color and shading
+                            //vec3(.8, 1., .7) - .65 * smoothstep(0., 1., 1.-length(fract(p+.2*rnd.z)-rnd.xy)/rnd.z),
+                            vec3(.8, 1., .7) - .65 * smoothstep(0., 1., 1.-length(fract(p+.33*spos*rnd.z)-rnd.xy)/rnd.z),
+                            l/L
+                        ),
+                        min(1., rnd.z * 7. * smoothstep(0., 1., 1.-length(fract(p)-rnd.xy)/rnd.z))
+                    );
+            }
+            
+            gl_FragColor = vec4(col, 1.);
         }
     </script>
 
