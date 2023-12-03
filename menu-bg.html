@@ -17,19 +17,24 @@
             height: 100vh;
         }
         img {
-            position: absolute;
-            top: 0;
-            left: 0;
             display: block;
-            width: 100%; 
-            height: 100%;
-            object-fit: cover;
+        }
+        img#menu_img {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 50%; 
+            height: 50%;
+            object-fit: contain;
         }
     </style>
 </head>
 <body>
     <canvas id="menu_canvas"></canvas>
-    <img src="assets/menu-billy.png" alt="">
+    <img id="menu_img" src="assets/menu-billy.png" alt="">
+    <!--<div id="menu_button" style="position: absolute; right: 0;">
+        <button onclick="snipped()">SNIP!</button>
+    </div>-->
 
     <script id="vertex_shader" type="x-shader/x-vertex">
         attribute vec3 a_square;
@@ -97,11 +102,12 @@
         }
     </script>
 
+    <script>
+        let runner = null
+    </script>
     <script type="module" src="../../js/game/webgl-runner.js"></script>
     <script type="module">
         import WebglRunner from "../../js/game/webgl-runner.js"
-
-        let runner = null;
 
         // Start the shader
         setTimeout(() => {
@@ -119,6 +125,29 @@
                 runner?.resume()
             else
                 runner?.pause()
+        }
+    </script>
+
+    <script>
+        const snipped = () => {
+            runner.pause()
+
+            const canvas = document.getElementById("menu_canvas")
+            canvas.toBlob(blob => {
+                const img = document.createElement("img")
+                const url = URL.createObjectURL(blob)
+                
+                img.onload = () => { 
+                    URL.revokeObjectURL(url)
+
+                    document.getElementById("menu_canvas").remove()
+                    document.getElementById("menu_img").remove()
+                    document.getElementById("menu_button").remove()
+
+                    document.body.appendChild(img)
+                }
+                img.src = url
+            })
         }
     </script>
 </body>
