@@ -1,0 +1,26 @@
+
+#gmenu {
+
+    font-family: -apple-system, SF UI Text, Helvetica Neue, Helvetica, Arial, sans-serif;
+    padding: 0;
+    margin: 0;
+    line-height: 1.4;
+
+    *::-webkit-scrollbar { display: none; }
+
+    .solid {
+        z-index: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: #ffffff;
+    }
+    
+    #game_menu {
+        position: absolute;
+
+        .menu-panel a {
+            color: whitesmoke;
+        }
+    }
+}
